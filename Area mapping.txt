@@ -1,0 +1,65 @@
+Fp1: left prefrontal cortex
+Fp2: right prefrontal cortex
+F3: left frontal cortex
+F4: right frontal cortex
+C3: left central cortex
+C4: right central cortex
+P3: left parietal cortex
+P4: right parietal cortex
+O1: left occipital cortex
+O2: right occipital cortex
+F7: left frontal-temporal region
+F8: right frontal-temporal region
+T7: left temporal region
+T8: right temporal region
+P7: left parietal-temporal region
+P8: right parietal-temporal region
+Afz: frontal-central region
+Fz: frontal region
+Cz: central region
+Pz: parietal region
+FC1: left frontal-central region
+FC2: right frontal-central region
+CP1: left central-parietal region
+CP2: right central-parietal region
+FC5: left frontal-lateral region
+FC6: right frontal-lateral region
+CP5: left parietal-lateral region
+CP6: right parietal-lateral region
+P9: left posterior region
+P10: right posterior region
+POz: midline parieto-occipital region
+Oz: occipital midline
+F1: left frontal region
+F2: right frontal region
+C1: left central region
+C2: right central region
+P1: left parietal region
+P2: right parietal region
+AF3: left frontal-temporal region
+AF4: right frontal-temporal region
+FC3: left frontal-central region
+FC4: right frontal-central region
+CP3: left central-parietal region
+CP4: right central-parietal region
+PO3: left parieto-occipital region
+PO4: right parieto-occipital region
+F5: left frontal-lateral region
+F6: right frontal-lateral region
+C5: left central-lateral region
+C6: right central-lateral region
+P5: left parietal-lateral region
+P6: right parietal-lateral region
+AF7: left frontal-temporal region
+AF8: right frontal-temporal region
+FT7: left frontal-temporal region
+FT8: right frontal-temporal region
+TP7: left temporal-parietal region
+TP8: right temporal-parietal region
+PO7: left parieto-occipital-temporal region
+PO8: right parieto-occipital-temporal region
+Fpz: frontal midline
+FCz: frontal-central midline
+FT9: left frontal-temporal region
+FT10: right frontal-temporal region
+EMG: electrode used for electromyography, not related to EEG

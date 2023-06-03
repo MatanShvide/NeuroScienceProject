@@ -20,7 +20,9 @@
       A one page description of this project's goals
       
   'draw_all.py'
-      A code designed to create folders containing plots for each brain region seperatly: Complete trial, Pulses zoom out, (Pulse zoom in) * No. of pulses
+      A code designed to create folders containing plots for each brain region seperatly:
+      
+      Complete trial, Pulses zoom out, (Pulse zoom in) * No. of pulses
       
       Input: matrix, list of indices to focus on
       
@@ -28,14 +30,20 @@
       
   'get_interpolation improved'
       A code flow designated to find the location of the TMS pulses.
+      
       Input: Raw object #current version creates raw object from hard-coded file path
+      
       Output: List with pairs of indices ranging 20 time units.
+      
       The indices between each pair are the indices which their values will be removed and replaced by interpolation
     
    'implement_interpolation.py'
       -The main flow- 
-        Input: file path '*.vhdr' in a folder with '*.eeg' and '*.vmrk' #current version contains hard coded file path
+        Input: file path '*.vhdr' in a folder with '*.eeg' and '*.vmrk'
+        #current version contains hard coded file path
+        
         Creates raw object, calls 'get_interpolation_improved', creates the log, creates new interpolated matrix
+        
         Output:
           Printed log of events and interesting/suspicious datapoints
           Plots of the interpolated EEG data
@@ -43,8 +51,11 @@
           
  # Links & Contacts:
     Jupiter: https://datalore.jetbrains.com/notebook/Bqm9dGwjGT5WNga8DL1wjR/SCHFsjVEM44pRsRA94YbNK
+    
     amitomer312@gmail.com
+    
     amithorovitz@mail.tau.ac.il
+    
     matanshvide@mail.tau.ac.il
     
     

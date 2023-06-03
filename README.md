@@ -38,7 +38,9 @@
       The indices between each pair are the indices which their values will be removed and replaced by interpolation
     
    'implement_interpolation.py'
-      -The main flow- 
+   
+    The main flow
+    
         Input: file path '*.vhdr' in a folder with '*.eeg' and '*.vmrk'
         #current version contains hard coded file path
         

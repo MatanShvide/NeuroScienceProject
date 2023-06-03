@@ -1,11 +1,15 @@
 # NeuroScienceProject
   Preprocessing algorithm for TEP experiment EEG data.
+  
   This code flow locates the TMS pulses contaminated data, removes them and replaces them by cubic interpolation.
+  
   Full description of the project's goals in 'Research problem.docx'.
 
 # To run locally
   Open cmdline in your folder and run : pip install -r requirements.txt
+  
   Insert file path in the first row of implement_interpolation.main() to a '*.vhdr' file in a folder containing it's mathcing '*.eeg' and '*.vmrk'
+  
   Run implement_interpolation.py
 
 # Files description
@@ -17,13 +21,16 @@
       
   'draw_all.py'
       A code designed to create folders containing plots for each brain region seperatly: Complete trial, Pulses zoom out, (Pulse zoom in) * No. of pulses
+      
       Input: matrix, list of indices to focus on
+      
       Output: Folder for each region with plots
       
   'get_interpolation improved'
       A code flow designated to find the location of the TMS pulses.
       Input: Raw object #current version creates raw object from hard-coded file path
-      Output: List with pairs of indices ranging 20 time units. The indices between each pair are the indices which their values will be removed and replaced by interpolation
+      Output: List with pairs of indices ranging 20 time units.
+      The indices between each pair are the indices which their values will be removed and replaced by interpolation
     
    'implement_interpolation.py'
       -The main flow- 

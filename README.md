@@ -17,6 +17,8 @@
       
   'draw_all.py'
       A code designed to create folders containing plots for each brain region seperatly: Complete trial, Pulses zoom out, (Pulse zoom in) * No. of pulses
+      Input: matrix, list of indices to focus on
+      Output: Folder for each region with plots
       
   'get_interpolation improved'
       A code flow designated to find the location of the TMS pulses.

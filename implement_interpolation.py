@@ -26,15 +26,14 @@ def check_interpolation(inter_func, xaxis , yaxis, row):
     print("avg. distace in exam regions is " + str(avg/len(exam_regions)))
     return
 
-def interpolation(xaxis , yaxis, row):
+def interpolation(xaxis , yaxis, inter_xaxis, row):
     # returns a new matrix with the values created by the interpolation
     inter_func = interpolate.interp1d(xaxis, yaxis, kind = 'cubic')
-    new_xaxis = np.arange(0, len(row))
-    interpolated_row = inter_func(new_xaxis)
-    check_interpolation(inter_func, xaxis, yaxis, row)
+    interpolated_row = inter_func(inter_xaxis)
+    #check_interpolation(inter_func, xaxis, yaxis, row) 
     return interpolated_row
 
-def compare_to_events(row , ):
+def compare_to_events(raw ,indices ):
     # compares our tms timestamps with events recorded by the machine
     # prints avg. deviation from reported starting of tmps pulse and avg. deviation 
     # from reported ending on tmps pulse and ranges in which the deviation was significant
@@ -58,55 +57,61 @@ def print_output_log(output_log):
 
 def interpolation_axises(row , indices):
     xaxis = [ i for i in range(indices[0][0])]
+    new_xaxis = []
     for index in range(len(indices)):
-        try : 
+        try :
+            new_xaxis += [i for i in range(indices[index][0], indices[index][1] + 1)]
             xaxis += [i for i in range(indices[index][1] , indices[index + 1][0])]
         except IndexError:
             xaxis += [i for i in range(indices[index][1] , len(row))]  
     yaxis = [row[i] for i in xaxis] 
-    return xaxis , yaxis
+    return xaxis , yaxis , new_xaxis
 
-def main( ): #main arguments: raw, logs
-    raw = mne.io.read_raw_brainvision('sub100_rt_TEP.vhdr')
+def main( ): #main arguments: raw, logs, max = none, min = none
+    # returns a new raw object with the interpolated values
+    raw = mne.io.read_raw_brainvision('Data/sub_100/EEG/sub100_rt_TEP.vhdr')
     mat = raw.get_data()
     output_log = {}
     num_of_artifacts = {}
     logs = get_interpolation(raw)
     output_log["sum_of_peaks"] = 0
-    interpolated_mat = np.zeros(shape = (len(mat), len(mat[0])))
+    interpolated_mat = np.copy(mat)
     for channel in range(len(mat)): #iterating over the channels
         key = "Region " + str(channel+1)
         output_log["sum_of_peaks"] += len(logs[key]["Indices"]) 
-        xaxis , yaxis = interpolation_axises(mat[channel] , logs['General Info']["Indices to interpolate"] )
-        interpolated_mat[channel] = interpolation(xaxis, yaxis, mat[channel])
-        if len(mat[channel]) != len(interpolated_mat[channel]):
-            print("error! interpolated row has different length  " + str(len(interpolated_mat[channel])) + " from original mat " + str(len(mat[channel])))
-        else:
-            count = 0
-            avg = 0
-            for n in range(len(xaxis)):
-                i = xaxis[n]
-                avg += abs(interpolated_mat[channel][i] - mat[channel][i])
-                if mat[channel][i] != interpolated_mat[channel][i]:
-                    count += 1
-            print("found " + str(count) + " different values after interpolation")
-            print("avg. difference between mats is " + str(avg/len(xaxis)))
-        if channel == 0:
-            plt.plot( [x for x in range(len(interpolated_mat[channel]))] , interpolated_mat[channel] , label = "interpolated")
-            plt.scatter(xaxis , yaxis , label = "original" , color = 'red')
-            plt.legend()
-            plt.show()
-        break
-    ##print(interpolated_mat)
-    
+        ##output_log[key] = [passed_check , failed_check]
+        # adding number of artifact in channel to dict. checks if all channels have the same number of artifacts
+        ##if len(output_log[key][0]) not in num_of_artifacts:
+        ##    num_of_artifacts[output_log[key][0]] = [channel]
+        ##else:
+        ##    num_of_artifacts[output_log[key][0]].append(channel)
+        compare_to_events(raw , logs['General Info']["Indices to interpolate"])
+        xaxis , yaxis , inter_xaxis = interpolation_axises(mat[channel] , logs['General Info']["Indices to interpolate"] )
+        inter_yaxis = interpolation(xaxis, yaxis, inter_xaxis ,mat[channel])
+        for x in range(len(inter_xaxis)):
+            interpolated_mat[channel][inter_xaxis[x]] = inter_yaxis[x]  #changing the interpolated values in the interpolated mat
+        #count = 0
+        #avg = 0
+        #for n in range(len(xaxis)):
+            #i = xaxis[n]
+            #avg += abs(interpolated_mat[channel][i] - mat[channel][i])
+            #if mat[channel][i] != interpolated_mat[channel][i]:
+                #count += 1
+        #print("found " + str(count) + " different values after interpolation")
+        #print("avg. difference between mats is " + str(avg/len(xaxis)))
+        #if channel == 0:
+        #    plt.plot( [x for x in range(len(interpolated_mat[channel]))] , interpolated_mat[channel] , label = "interpolated")
+        #    plt.scatter(xaxis , yaxis , label = "original" , color = 'red')
+        #    plt.legend()
+        #    plt.show()
 
-    if len(num_of_artifacts) > 1:
-        print("error! number of tms pulse artifacts isn't identical in all channels!")
-        for num in num_of_artifacts.keys():
-            channels = ""
-            for i in range(len(num_of_artifacts[num])):
-                channels += str(i)
-            print("Channels " + channels + "have " + str(num) + " tms pulse artifacts" )
+    # Create a new Raw object with the new data matrix
+    info = raw.info  # Preserve the original info structure
+    raw_new = mne.io.RawArray(interpolated_mat, info)
+    #new_mat = raw_new.get_data()
+    #plt.plot(new_mat[1])
+    #plt.show()
+    return raw_new
 
 
 

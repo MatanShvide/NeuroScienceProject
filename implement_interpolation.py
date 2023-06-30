@@ -45,8 +45,7 @@ def print_output_log(output_log):
     for channel in range(1, len()):
         key = "Region " + str(channel)
         if len(output_log[key][1]) != 0:
-            print("\t " + len(output_log[key][
-                                  1]) + " irregular activity that doesn't match the tms pulse artifact were found in channel " + str(
+            print("\t " + len(output_log[key][1]) + " irregular activity that doesn't match the tms pulse artifact were found in channel " + str(
                 channel))
             print("\t locations: " + input[key][1])
         print("")  # deviation from events
@@ -54,7 +53,7 @@ def print_output_log(output_log):
 
 
 def interpolation_axises(row, indices):
-    xaxis = [i for i in range(indices[0][0] - 4)]
+    xaxis = [i for i in range(0, indices[0][0] - 4)]
     inter_xaxis = []
     for index in range(len(indices)):
         try:
@@ -66,13 +65,14 @@ def interpolation_axises(row, indices):
     return xaxis, yaxis, inter_xaxis
 
 
-def implement_interpolation_raw(raw, output, dynamic_plot=-1, static_plot=[]):
+def implement_interpolation_raw(raw, dynamic_plot=-1, static_plot=[]):
     # Arguments: (raw object, output format - new raw object or interpolated matrix, dynamic_plot - electrode, static_plot - list of channels to plot)
     # returns a new raw object with the interpolated values
     mat = raw.get_data()
     output_log = {}
     num_of_artifacts = {}
     logs = get_pulses(mat)
+    print(logs['General Info']["Indices to interpolate"])
     output_log["sum_of_peaks"] = 0
     interpolated_mat = np.copy(mat)
     for channel in range(len(mat)):  # iterating over the channels
@@ -83,37 +83,32 @@ def implement_interpolation_raw(raw, output, dynamic_plot=-1, static_plot=[]):
         inter_yaxis = interpolation(xaxis, yaxis, inter_xaxis, mat[channel])
         for x in range(len(inter_xaxis)):
             interpolated_mat[channel][inter_xaxis[x]] = inter_yaxis[x]  # changing the interpolated values in the interpolated mat
-
-    if output == 'm':
-        if dynamic_plot != -1:
-            plt.plot(interpolated_mat[dynamic_plot])
-            plt.show()
-        if static_plot != []:
-            draw_all(mat, logs['General Info']["Indices to interpolate"], 'Raw_before', static_plot)
-            draw_all(interpolated_mat, logs['General Info']["Indices to interpolate"], 'Raw_After', static_plot)
-        return interpolated_mat
     # Create a new Raw object with the new data matrix
     info = raw.info  # Preserve the original info structure
     output = mne.io.RawArray(interpolated_mat, info)
+    mat2 = output.get_data()
+    #Plot
     if dynamic_plot != -1:
-        plt.plot(interpolated_mat[dynamic_plot])
+        plt.plot(mat2[dynamic_plot])
         plt.show()
-    if static_plot != []:
+    """if static_plot:
         draw_all(mat, logs['General Info']["Indices to interpolate"], 'Raw_before', static_plot)
-        draw_all(interpolated_mat, logs['General Info']["Indices to interpolate"], 'Raw_After', static_plot)
+        draw_all(interpolated_mat, logs['General Info']["Indices to interpolate"], 'Raw_After', static_plot)"""
     return output
 
 
-def implement_interpolation_epoch(epoch, output, dynamic_plot=[], static_plot=[]):
+def implement_interpolation_epoch(epoch, dynamic_plot=[], static_plot=[]):
     #Arguments: (epoch object, output format (currently only interpolated matrix), dynamic_plot = [segment][electode], static_plot = list of segments to plot)
     # returns an interpolated matrix
     mat = epoch.get_data()
+    raw = epoch._raw
+    mat_new = raw.get_data()
     output_log = {"sum_of_peaks": 0}
     interpolated_mat = np.copy(mat)
     for segment in range(len(mat)):
         logs = get_pulses(mat[segment])
         print(segment)
-        if logs['Errors'] != [] and logs['Errors'][0] == "No pulses in this segment":
+        if logs['Errors'] and logs['Errors'][0] == "No pulses in this segment":
             continue
         for channel in range(len(mat[segment])):  # iterating over the channels
             key = "Electrode " + str(channel)
@@ -122,27 +117,39 @@ def implement_interpolation_epoch(epoch, output, dynamic_plot=[], static_plot=[]
             inter_yaxis = interpolation(xaxis, yaxis, inter_xaxis, mat[segment][channel])
             for x in range(len(inter_xaxis)):
                 interpolated_mat[segment][channel][inter_xaxis[x]] = inter_yaxis[x]  # changing the interpolated values in the interpolated mat
-        if static_plot != 0 and segment in static_plot:
+                mat_new[channel][segment*10000 + inter_xaxis[x]] = inter_yaxis[x]
+                seg = segment
+        """if static_plot != 0 and segment in static_plot:
             lst = [i for i in range(len(mat[segment]))]
             draw_all(mat[segment], logs['General Info']["Indices to interpolate"], 'Epoch_before_segment ' + str(segment), lst)
-            draw_all(interpolated_mat[segment], logs['General Info']["Indices to interpolate"], 'Epoch_After_segment ' + str(segment), lst)
+            draw_all(interpolated_mat[segment], logs['General Info']["Indices to interpolate"], 'Epoch_After_segment ' + str(segment), lst)"""
     # Create a new epoch object with the new data matrix
-    if dynamic_plot[0] != []:
-        plt.plot(interpolated_mat[dynamic_plot[0]][dynamic_plot[1]])
+    output = create_new_epoch(raw, epoch, mat_new)
+    mat2 = output.get_data()
+    #Plot
+    if dynamic_plot[0]:
+        #plt.plot(mat2[dynamic_plot[0]][dynamic_plot[1]])
+        plt.plot(mat2[seg][0])
         plt.show()
-    return interpolated_mat
+    return output
 
+def create_new_epoch(raw, epoch, mat_new):
+    info = raw.info
+    t_min = epoch.tmin
+    t_max = epoch.tmax
+    events = epoch.events
+    new_raw = mne.io.RawArray(mat_new, info)
+    output = mne.Epochs(new_raw, events=events, tmin=t_min, tmax=t_max, baseline=None, preload=True)
+    return output
 
-
-
-def tms_pulse_interpolation(input, output, dynamic_plot, static_plot):
+def tms_pulse_interpolation(input, dynamic_plot, static_plot):
     #input - object to work on
     #output - 'n' new object or 'm' new matrix
     #plot [0/1 = n/y, segment, channel] !!For raw only channel
 
     if isinstance(input, mne.Epochs):
-        return implement_interpolation_epoch(input, output, dynamic_plot, static_plot)
+        return implement_interpolation_epoch(input, dynamic_plot, static_plot)
     if isinstance(input, mne.io.brainvision.brainvision.RawBrainVision):
-        return implement_interpolation_raw(input, output, dynamic_plot, static_plot)
+        return implement_interpolation_raw(input, dynamic_plot, static_plot)
     else:
         return "Invalid Input"

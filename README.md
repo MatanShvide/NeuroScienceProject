@@ -14,7 +14,7 @@
 
 # Files description
   'Area Mapping.txt'
-      A list of all row indices with thier coresponding brain region
+      A list of all row indices with their coresponding brain region
       
   'Research problem.docx'
       A one page description of this project's goals

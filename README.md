@@ -8,9 +8,9 @@
 # To run locally
   Open cmdline in your folder and run : pip install -r requirements.txt
   
-  Put 'draw_all', 'get_pulses', 'implement_interpolation' in your folder and add "from implement_interpolation import *" to the head of your file
+  Put  'get_pulses', 'implement_interpolation' in your folder and add "from implement_interpolation import *" to the head of your file
   
-  call tms_pulse_interpolation(input, output, dynamic_plot, static_plot)
+  call tms_pulse_interpolation(raw_or_epoch_object, indices_before_pulse, indices_after_pulse)
 
 # Files description
   'Area Mapping.txt'
@@ -41,13 +41,12 @@
    
     The main flow
     
-        Input: (input - raw/epoch object, output format [only 'm' for matrix for now], dynamic_plot, static_plot):
         
         Calls get_pulses, creates the log, creates new interpolated matrix and plot by request
         
         Output:
-          Plots of the interpolated EEG data
-          interpolated matrix
+          Plot of one example segment of the interpolated EEG data
+          A new object with an interpolated matrix
           
  # Links & Contacts:
    

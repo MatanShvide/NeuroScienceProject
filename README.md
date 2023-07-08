@@ -47,6 +47,9 @@
         Output:
           Plot of one example segment of the interpolated EEG data
           A new object with an interpolated matrix
+
+    'external.py' 
+      An example file for how we created the objects and ran the functions.
           
  # Links & Contacts:
    

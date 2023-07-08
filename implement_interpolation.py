@@ -5,12 +5,38 @@ from get_pulses import *
 import matplotlib.pyplot as plt
 import random
 from draw_all import *
-from sklearn.metrics.pairwise import cosine_similarity
 
-def check_interpolation(inter_func, xaxis, yaxis, row):
+def print_visual(og_object, inter_object, logs, epoch = 0, channel = 0):
+        if isinstance(inter_object, mne.Epochs):
+            og_mat = og_object.get_data()[epoch]
+            inter_mat = inter_object.get_data()[epoch]
+            start_point = max(logs['General Info']["Indices to interpolate"][0][0] - 50, 0)
+            end_point = min(logs['General Info']["Indices to interpolate"][0][1] + 51, len(inter_mat[0]))
+        else:
+            og_mat = og_object.get_data()
+            inter_mat = inter_object.get_data()
+            interpolation_region_num = random.randrange(0 , len(logs['General Info']["Indices to interpolate"]))
+            start_point = max(logs['General Info']["Indices to interpolate"][interpolation_region_num][0] - 50, 0)
+            end_point = min(logs['General Info']["Indices to interpolate"][interpolation_region_num][1] + 51, len(inter_mat[0]))
+        xaxis = [x for x in range(start_point, end_point)]
+        og_yaxis = [og_mat[channel][x] for x in xaxis]
+        inter_yaxis = [inter_mat[channel][x] for x in xaxis]
+        plt.plot(xaxis, inter_yaxis, color='red')
+        plt.plot(xaxis, og_yaxis, color='blue')
+        plt.xlabel('ms/10')
+        plt.ylabel('V')
+        if isinstance(inter_object, mne.Epochs):
+            plt.title("Channel " + str(channel) + " Epoch" + str(epoch) + " Indices: " + str(start_point) + " -  " + str(end_point))
+        else:
+            plt.title("Channel " + str(channel) + " Indices: " + str(start_point) + " -  " + str(end_point))
+        plt.show()
+
+
+def check_interpolation(xaxis, yaxis):
     # returns the avg. distance between the interpolation value and original value
     count = 0
     exam_regions = []
+    yaxis_exam_regions = []
     avg = 0
     while count < 5:
         index = random.randrange(0, len(xaxis))
@@ -19,172 +45,131 @@ def check_interpolation(inter_func, xaxis, yaxis, row):
         else:
             count += 1
             exam_regions += xaxis[index:index + 1001]
+            yaxis_exam_regions += yaxis[index:index + 1001]
             xaxis = xaxis[:index] + xaxis[index + 1001:]
             yaxis = yaxis[:index] + yaxis[index + 1001:]
-    x = np.arange(0, len(row))
-    interpolated_row = inter_func(x)
-    for x in exam_regions:
-        avg += abs(interpolated_row[x] - row[x])
-    print("avg. distace in exam regions is " + str(avg / len(exam_regions)))
-    return
+    x = np.arange(0, len(exam_regions))
+    interpolated_row = interpolation(xaxis , yaxis, exam_regions)
+    diff =  abs(interpolated_row - yaxis_exam_regions)
+    return np.mean(diff) , np.std(diff) , np.amax(diff) , np.amin(diff) 
 
 
-def interpolation(xaxis, yaxis, inter_xaxis, row):
+def interpolation(xaxis, yaxis, inter_xaxis):
     # returns a new matrix with the values created by the interpolation
     inter_func = interpolate.interp1d(xaxis, yaxis, kind='cubic')
     interpolated_row = inter_func(inter_xaxis)
-    # check_interpolation(inter_func, xaxis, yaxis, row)
     return interpolated_row
 
 
-def print_output_log(output_log):
+def print_output_log(logs, raw):
     # prints input log
     # returns none
-    print("Tests found " + str(output_log["sum_of_peaks"]) + " indications for irregular signals in all channels")
-    print("In every channel, we found " + str(output_log["artifacts_count"]) + " tms pulse artifacts")
-    for channel in range(1, len()):
-        key = "Region " + str(channel)
-        if len(output_log[key][1]) != 0:
-            print("\t " + len(output_log[key][
-                                  1]) + " irregular activity that doesn't match the tms pulse artifact were found in channel " + str(
-                channel))
-            print("\t locations: " + input[key][1])
-        print("")  # deviation from events
+    print("Tests found " + str(len(logs['General Info']['Indices to interpolate'])) + " indications of TMS pulse")
+    print("The electrode randomly chosen to be tested is " + raw.info.ch_names[logs['General Info']['exam region'][0]])
+    print("Interpolation tests return average difference between original value and interpolated value of " + str(logs['General Info']['exam region'][1][0]),
+          " with standard diviation of " + str(logs['General Info']['exam region'][1][1]) + "maximal difference between values is " + str(logs['General Info']['exam region'][1][2])
+           + " and minimal difference between values is " + str(logs['General Info']['exam region'][1][3]))
     return
 
 
-def interpolation_axises(row, indices):
-    xaxis = [i for i in range(indices[0][0] - 4)]
+def interpolation_axises(row, indices, slice_before , slice_after, log):
+    # define interpolated regions and x,y axises for the interpolation function
+    xaxis = [i for i in range(indices[0][0] - slice_before)]
     inter_xaxis = []
     for index in range(len(indices)):
         try:
-            inter_xaxis += [i for i in range(indices[index][0] - 4, indices[index][1] + 4)]
-            xaxis += [i for i in range(indices[index][1] + 4, indices[index + 1][0] - 4)]
+            inter_xaxis += [i for i in range(indices[index][0] - slice_before, indices[index][1] + slice_after)]
+            xaxis += [i for i in range(indices[index][1] + slice_after, indices[index + 1][0] - slice_before)]
         except IndexError:
-            xaxis += [i for i in range(indices[index][1] + 4, len(row))]
+            xaxis += [i for i in range(indices[index][1] + slice_after, len(row))]
+    if 'non-TMS pulse peaks' in log:
+        cont_indices = set()
+        for peak in log['non-TMS pulse peaks']:
+            i = peak[0]
+            while i <= peak[1]:
+                cont_indices.add(i)
+                i += 1
+        xaxis = [x for x in xaxis if x not in cont_indices]
     yaxis = [row[i] for i in xaxis]
     return xaxis, yaxis, inter_xaxis
 
 
-def implement_interpolation_raw(raw, output, dynamic_plot=-1, static_plot=[]):
-    # Arguments: (raw object, output format - new raw object or interpolated matrix, dynamic_plot - electrode, static_plot - list of channels to plot)
+def implement_interpolation_raw(raw, max_val, slice_before, slice_after, plot):
     # returns a new raw object with the interpolated values
     mat = raw.get_data()
-    output_log = {}
-    num_of_artifacts = {}
-    logs = get_pulses(mat)
-    output_log["sum_of_peaks"] = 0
+    logs = get_pulses(mat, max_val)
+    #print(logs['General Info']["Indices to interpolate"])
     interpolated_mat = np.copy(mat)
+    test_channel = random.randrange(0, len(mat))
     for channel in range(len(mat)):  # iterating over the channels
-        print(channel)
         key = "Electrode " + str(channel)
-        output_log["sum_of_peaks"] += len(logs[key]["Indices"])
-        xaxis, yaxis, inter_xaxis = interpolation_axises(mat[channel], logs['General Info']["Indices to interpolate"])
-        inter_yaxis = interpolation(xaxis, yaxis, inter_xaxis, mat[channel])
+        print(key)
+        xaxis, yaxis, inter_xaxis = interpolation_axises(mat[channel], logs['General Info']["Indices to interpolate"], slice_before , slice_after, logs[key])
+        inter_yaxis = interpolation(xaxis, yaxis, inter_xaxis)
+        if channel == test_channel:
+            logs['General Info']['exam region'] = [test_channel] + [check_interpolation(xaxis, yaxis)]
         for x in range(len(inter_xaxis)):
             interpolated_mat[channel][inter_xaxis[x]] = inter_yaxis[x]  # changing the interpolated values in the interpolated mat
-        interpolation_accuracy(inter_xaxis, inter_yaxis, channel)
-    if output == 'm':
-        if dynamic_plot != -1:
-            plt.plot(interpolated_mat[dynamic_plot])
-            plt.show()
-        if static_plot != []:
-            draw_all(mat, logs['General Info']["Indices to interpolate"], 'Raw_before', static_plot)
-            draw_all(interpolated_mat, logs['General Info']["Indices to interpolate"], 'Raw_After', static_plot)
-        return interpolated_mat
     # Create a new Raw object with the new data matrix
     info = raw.info  # Preserve the original info structure
     output = mne.io.RawArray(interpolated_mat, info)
-    if dynamic_plot != -1:
-        plt.plot(interpolated_mat[dynamic_plot])
-        plt.show()
-    if static_plot != []:
-        draw_all(mat, logs['General Info']["Indices to interpolate"], 'Raw_before', static_plot)
-        draw_all(interpolated_mat, logs['General Info']["Indices to interpolate"], 'Raw_After', static_plot)
+    #mat2 = output.get_data()
+    print_output_log(logs, raw)
+    if plot:
+        print_visual(output, raw, logs)
     return output
 
 
-def implement_interpolation_epoch(epoch, output, dynamic_plot=[], static_plot=[]):
-    #Arguments: (epoch object, output format (currently only interpolated matrix), dynamic_plot = [segment][electode], static_plot = list of segments to plot)
+def implement_interpolation_epoch(epoch, max_val, slice_before, slice_after, plot):
     # returns an interpolated matrix
     mat = epoch.get_data()
-    output_log = {"sum_of_peaks": 0}
+    raw = epoch._raw
+    mat_new = raw.get_data()
     interpolated_mat = np.copy(mat)
+    adjusted_segments = []
+    test_segment = random.randrange(0, len(mat))
+    test_channel = random.randrange(0, len(mat[0]))
+    empty_segments = []
     for segment in range(len(mat)):
-        logs = get_pulses(mat[segment])
-        print(segment)
-        if logs['Errors'] != [] and logs['Errors'][0] == "No pulses in this segment":
+        logs = get_pulses(mat[segment], max_val)
+        if logs['Errors'] and logs['Errors'][0] == "No pulses in this segment":
+            empty_segments.append(segment)
             continue
+        adjusted_segments.append(segment)
         for channel in range(len(mat[segment])):  # iterating over the channels
             key = "Electrode " + str(channel)
-            output_log["sum_of_peaks"] += len(logs[key]["Indices"])
-            xaxis, yaxis, inter_xaxis = interpolation_axises(mat[segment][channel], logs['General Info']["Indices to interpolate"])
-            inter_yaxis = interpolation(xaxis, yaxis, inter_xaxis, mat[segment][channel])
+            xaxis, yaxis, inter_xaxis = interpolation_axises(mat[segment][channel], logs['General Info']["Indices to interpolate"], slice_before, slice_after, logs[key])
+            inter_yaxis = interpolation(xaxis, yaxis, inter_xaxis)
+            if segment == test_segment and channel == test_channel: # performing check_interpolation for randomly selected location
+                logs['General Info']['exam region'] = [check_interpolation(xaxis, yaxis)]
+                print("epoch tested:  " + str(test_segment) + " electrode tested: " + key + " average difference is " + str(logs['General Info']['exam region'][0]) )
             for x in range(len(inter_xaxis)):
                 interpolated_mat[segment][channel][inter_xaxis[x]] = inter_yaxis[x]  # changing the interpolated values in the interpolated mat
-        if static_plot != 0 and segment in static_plot:
-            lst = [i for i in range(len(mat[segment]))]
-            draw_all(mat[segment], logs['General Info']["Indices to interpolate"], 'Epoch_before_segment ' + str(segment), lst)
-            draw_all(interpolated_mat[segment], logs['General Info']["Indices to interpolate"], 'Epoch_After_segment ' + str(segment), lst)
-    # Create a new epoch object with the new data matrix
-    if dynamic_plot[0] != []:
-        plt.plot(interpolated_mat[dynamic_plot[0]][dynamic_plot[1]])
-        plt.show()
-    return interpolated_mat
+                mat_new[channel][segment*10000 + inter_xaxis[x]] = inter_yaxis[x]
+    output = create_new_epoch(raw, epoch, mat_new)
+    #Plot
+    if plot:
+        test_channel = random.randrange(0, len(mat[0]))
+        test_segment = random.choice(adjusted_segments)
+        logs = get_pulses(mat[test_segment], max_val)
+        print_visual(output, epoch, logs, test_segment, test_channel)
+    #print_output_log(logs, epoch)
+    return output
+
+def create_new_epoch(raw, epoch, mat_new):
+    info = raw.info
+    t_min = epoch.tmin
+    t_max = epoch.tmax
+    events = epoch.events
+    new_raw = mne.io.RawArray(mat_new, info)
+    output = mne.Epochs(new_raw, events=events, tmin=t_min, tmax=t_max, baseline=None, preload=True)
+    return output
 
 
-
-
-def tms_pulse_interpolation(input, output, dynamic_plot, static_plot):
-    #input - object to work on
-    #output - 'n' new object or 'm' new matrix
-    #plot [0/1 = n/y, segment, channel] !!For raw only channel
-
+def tms_pulse_interpolation(input, max_val = 20, slice_before = 4, slice_after = 4, plot = True):
     if isinstance(input, mne.Epochs):
-        return implement_interpolation_epoch(input, output, dynamic_plot, static_plot)
+        return implement_interpolation_epoch(input, max_val, slice_before, slice_after, plot)
     if isinstance(input, mne.io.brainvision.brainvision.RawBrainVision):
-        return implement_interpolation_raw(input, output, dynamic_plot, static_plot)
+        return implement_interpolation_raw(input,  max_val, slice_before, slice_after, plot)
     else:
         return "Invalid Input"
-
-
-
-
-def interpolation_accuracy(inter_xaxis, inter_yaxis, channel):
-    curr_interpolation = []
-    curr_neighbor = []
-    similarity_scores = []
-    for x in range(len(inter_xaxis)):
-        for i in range(30):
-            if (x < len(inter_xaxis)):
-                curr_interpolation.append(inter_yaxis[x])
-                curr_neighbor.append(inter_yaxis[x - 30])
-                x += 1
-        similarity = calculate_similarity(curr_interpolation, curr_neighbor)
-        similarity_scores.append(similarity)
-        if (similarity < 80):
-            print("Problematic interpolation accuracy between", inter_xaxis[x] * 10, " ms and ",
-                  inter_xaxis[x] * 10 + 3, " ms.")
-        curr_interpolation = []
-        curr_neighbor = []
-    print("The mean percentage of the similarity between interpolated areas and their neighboring values, in channel", channel+1, "is: ",
-          np.mean(similarity_scores), " and its standard deviation is: ", np.std(similarity_scores))
-
-
-def calculate_similarity(interpolated_values, neighboring_values):
-    neighboring_values = np.array(neighboring_values)
-    interpolated_values = np.array(interpolated_values)
-
-    neighboring_values = np.array(neighboring_values).reshape(1, -1)
-    interpolated_values = np.array(interpolated_values).reshape(1, -1)
-
-    # Calculate the cosine similarity between neighboring and interpolated values
-    similarity = cosine_similarity(neighboring_values, interpolated_values)
-
-    # Return the similarity score
-    similarity_score = similarity[0, 0]
-
-    # Calculate the similarity percentage
-    similarity_percentage = np.mean(similarity_score) * 100
-
-    return similarity_percentage

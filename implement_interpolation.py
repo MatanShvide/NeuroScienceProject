@@ -4,7 +4,6 @@ from scipy import interpolate
 from get_pulses import *
 import matplotlib.pyplot as plt
 import random
-from draw_all import *
 #from ARExtrapolation import *
 
 def compare_events_to_get_pulse(logs, og_mat):
@@ -14,7 +13,8 @@ def compare_events_to_get_pulse(logs, og_mat):
         get_pulses_log['General Info']['Indices to interpolate'] = []
         for seg in range(len(og_mat)):
             epoch_log = get_pulses(og_mat[seg])
-            get_pulses_log['General Info']['Indices to interpolate'] += epoch_log['General Info']['Indices to interpolate']
+            if epoch_log.get('General Info').get('Indices to interpolate'):
+                get_pulses_log['General Info']['Indices to interpolate'] += epoch_log['General Info']['Indices to interpolate']
     else:
         get_pulses_log = get_pulses(og_mat)
     obj_indices = logs['General Info']['Indices to interpolate']

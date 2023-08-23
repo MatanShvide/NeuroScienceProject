@@ -1,8 +1,6 @@
 import mne
 import numpy as np
 
-import draw_all
-from draw_all import *
 
 
 def get_peak(mat):

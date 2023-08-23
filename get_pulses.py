@@ -115,7 +115,6 @@ def get_pulses(mat):
     for i in range(len(mat)):
         arr[i] = logs['Electrode ' + str(i)]['Number of pulses']
     most_common_value = np.argmax(np.bincount(arr.astype(int)))
-    print("Most common value is " + str(most_common_value))
     lst = find_range(logs, len(mat), most_common_value)  # determine final locations of pulses
     logs['General Info']["Indices to interpolate"] = lst
     return logs

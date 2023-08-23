@@ -12,7 +12,7 @@ def get_peak(mat):
     return peaks
 
 
-def find_abnormalities(diffs, peak):
+def find_abnormalities(diffs, peak, j):
     low_inds = np.where(diffs > peak)
     high_inds = np.where(diffs < (-peak))
     return (high_inds, low_inds)
@@ -61,7 +61,7 @@ def sort_pulses_for_region(pulses_lst):
         pulses_lst[i] = np.sort(pulses_lst[i])
 
 
-def check_shape(row, pulses_lst, peak):
+def check_shape(row, pulses_lst, peak, j):
     final_array = []
     for i in range(len(pulses_lst)):
         if len(pulses_lst[i]) == 0:
@@ -91,50 +91,31 @@ def find_range(logs, rows, pulses):  # take average of all indices and create a 
         min_avg = min_sum // (rows - cnt)
         diff = max_avg - min_avg
         extension = (20 - diff) // 2
-        result.append([min_avg - extension, max_avg + extension])
-    return result
+        result.append(min_avg - extension)
+    return result 
 
 
-def get_pulses(mat, max_val):
+def get_pulses(mat):
     logs = {'Errors': [], 'General Info': {}}
     diffs = np.diff(mat)
     peaks = get_peak(mat)
-    pulses = 1
     if np.amax(peaks) < 0.005:
         logs['Errors'].append("No pulses in this segment")
-        pulses = 0
         return logs
-    for i in range(len(mat)):  # for each electrode signal
-        if pulses == 1:
-            peak = peaks[i]  # get_peak(max_mat[i], min_mat[i])  #determine required amplitude
-            logs['Electrode ' + str(i)] = {'Amplitude': peak}
-            indices = find_abnormalities(diffs[i], peak)  # find abnormal indices by peak
-            pulses_lst = group_indices(indices, 6)  # group abnormal indices by adjacency
-            sort_pulses_for_region(pulses_lst)  # sort indices
-            final_array = check_shape(mat[i], pulses_lst, peak)  # check pattern of pulses contains min&max values
-            logs['Electrode ' + str(i)]['Number of pulses'] = len(final_array)
-            logs['Electrode ' + str(i)]['Indices'] = final_array
-        """if max_val != 20:  # if max val isn't default value, run same process for peak = max_value
-            max_val_peaks_indices = find_abnormalities(diffs[i], max_val)  # find abnormal indices by max value
-            max_vals_peaks_lst = group_indices(max_val_peaks_indices, 6)  # group abnormal indices by adjacency
-            sort_pulses_for_region(max_vals_peaks_lst)  # sort indices
-            if pulses == 1:  # if there are TMS pulses, remove TMS pulses from list of non-TMS pulses larger than max_value
-                indices_set = set(final_array)
-                peaks_array = [x for x in max_vals_peaks_lst if x not in indices_set]
-                for peak in peaks_array:  # find max absolute value for each non-TMS peak
-                    start_indice = peak[0]
-                    end_indice = peak[1]
-                    max_high = np.amax(mat[start_indice], mat[end_indice])
-                    max_low = np.amin(mat[start_indice], mat[end_indice])
-                    if max_high > -max_low:
-                        peak.append(max_high)
-                    else:
-                        peak.append(max_low)
-                logs['Electrode ' + str(i)]['non-TMS pulse peaks'] = peaks_array"""
+    for i in range(len(mat)):  # for each region
+        peak = peaks[i]# get_peak(max_mat[i], min_mat[i])  #determine required amplitude
+        logs['Electrode ' + str(i)] = {'Amplitude': peak}
+        indices = find_abnormalities(diffs[i], peak, i)  # find abnormal indices
+        pulses_lst = group_indices(indices, 6)  # group abnormal indices by adjacency
+        sort_pulses_for_region(pulses_lst)  # sort indices
+        final_array = check_shape(mat[i], pulses_lst, peak, i)  # check pattern of pulses contains min&max values
+        logs['Electrode ' + str(i)]['Number of pulses'] = len(final_array)
+        logs['Electrode ' + str(i)]['Indices'] = final_array
     arr = np.empty(65)
     for i in range(len(mat)):
         arr[i] = logs['Electrode ' + str(i)]['Number of pulses']
     most_common_value = np.argmax(np.bincount(arr.astype(int)))
+    print("Most common value is " + str(most_common_value))
     lst = find_range(logs, len(mat), most_common_value)  # determine final locations of pulses
     logs['General Info']["Indices to interpolate"] = lst
     return logs
